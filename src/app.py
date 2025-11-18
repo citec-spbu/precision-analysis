@@ -5,6 +5,7 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import numpy as np
 from matplotlib.figure import Figure
 import matplotlib
+from functions_call import get_error_data
 
 class SimpleApp:
     def __init__(self, root):
@@ -43,12 +44,41 @@ class SimpleApp:
         
         self.label_file2 = ttk.Label(btn_frame, text="Файл 2 не выбран")
         self.label_file2.pack(side=tk.RIGHT, padx=5)
+
+        tsai_lenz_var = tk.IntVar()  # Переменная для хранения состояния чекбокса tsai-lenz
+        tsai_lenz_check = tk.Checkbutton(root, text="tsai-lenz", variable=tsai_lenz_var)
+        tsai_lenz_check.pack()
+
+        park_martin_var = tk.IntVar()  # Переменная для хранения состояния чекбокса park-martin
+        park_martin_check = tk.Checkbutton(root, text="park-martin", variable=park_martin_var)
+        park_martin_check.pack()
+
+        daniilidis_var = tk.IntVar()  # Переменная для хранения состояния чекбокса daniilidis
+        daniilidis_check = tk.Checkbutton(root, text="daniilidis", variable=daniilidis_var)
+        daniilidis_check.pack()
+
+        li_wang_wu_var = tk.IntVar()  # Переменная для хранения состояния чекбокса li-wang-wu
+        li_wang_wu_check = tk.Checkbutton(root, text="li-wang-wu", variable=li_wang_wu_var)
+        li_wang_wu_check.pack()
+
+        shah_var = tk.IntVar()  # Переменная для хранения состояния чекбокса shah
+        shah_check = tk.Checkbutton(root, text="shah", variable=shah_var)
+        shah_check.pack()
         
         self.submit_btn = ttk.Button(
-            self.root,
-            text="Выполнить",
-            command=self.run_methods
+        self.root,
+        text="Выполнить",
+        command=lambda: self.run_methods([
+            name for name, var in [
+                ("tsai-lenz", tsai_lenz_var),
+                ("park-martin", park_martin_var),
+                ("daniilidis", daniilidis_var),
+                ("li-wang-wu", li_wang_wu_var),
+                ("shah", shah_var)
+            ] if var.get()
+        ])
         )
+
         self.submit_btn.pack(pady=10)
 
         self.create_scrollable_plot_area()
@@ -86,63 +116,25 @@ class SimpleApp:
             self.label_file2.config(text=f"Файл 2: {file_path.split('/')[-1]}")
     
 
-    def create_sample_plots(self):
-        """Создает примеры графиков для демонстрации"""
+    def create_plots(self, t_data, r_data):
         plots = []
-        
-        fig1 = Figure(figsize=(6, 4), dpi=80)
-        ax1 = fig1.add_subplot(111)
-        x = np.linspace(0, 4*np.pi, 100)
-        y = np.sin(x)
-        ax1.plot(x, y, 'b-', linewidth=2)
-        ax1.set_title('Синусоида')
-        ax1.grid(True)
-        plots.append(fig1)
-        
-        fig2 = Figure(figsize=(6, 4), dpi=80)
-        ax2 = fig2.add_subplot(111)
-        y2 = np.cos(x)
-        ax2.plot(x, y2, 'r-', linewidth=2)
-        ax2.set_title('Косинусоида')
-        ax2.grid(True)
-        plots.append(fig2)
-        
-        fig3 = Figure(figsize=(6, 4), dpi=80)
-        ax3 = fig3.add_subplot(111)
-        data = np.random.normal(0, 1, 1000)
-        ax3.hist(data, bins=30, alpha=0.7, color='green')
-        ax3.set_title('Гистограмма')
-        ax3.grid(True)
-        plots.append(fig3)
-        
-        fig4 = Figure(figsize=(6, 4), dpi=80)
-        ax4 = fig4.add_subplot(111)
-        x4 = np.random.normal(0, 1, 50)
-        y4 = np.random.normal(0, 1, 50)
-        ax4.scatter(x4, y4, color='purple', alpha=0.6)
-        ax4.set_title('Точечный график')
-        ax4.grid(True)
-        plots.append(fig4)
-        
-        fig5 = Figure(figsize=(6, 4), dpi=80)
-        ax5 = fig5.add_subplot(111)
-        x5 = np.linspace(0, 5, 100)
-        y5 = np.exp(x5)
-        ax5.plot(x5, y5, 'orange', linewidth=2)
-        ax5.set_title('Экспонента')
-        ax5.grid(True)
-        plots.append(fig5)
-        
-        for i in range(6, 9):
-            fig = Figure(figsize=(6, 4), dpi=80)
-            ax = fig.add_subplot(111)
-            x = np.linspace(0, 10, 100)
-            y = np.sin(x) * np.cos(i * x / 2)
-            ax.plot(x, y, color=plt.cm.tab10(i-5), linewidth=2)
-            ax.set_title(f'График {i}')
-            ax.grid(True)
+        for name in t_data:
+            metrics = [ "mean", "median", "rmse", "p95", "max"]
+            translation = [t_data[name][m] for m in metrics]
+            rotation = [r_data[name][m] for m in metrics]
+            x = np.arange(len(metrics))
+            width = 0.35
+            fig, ax = plt.subplots()
+            ax.bar(x - width/2, translation, width, label='transplantation')
+            ax.bar(x + width/2, rotation, width, label='rotation') 
+            ax.legend(loc='upper right', frameon=False)
+            ax.legend(loc='upper right', fontsize=10)
+            ax.set_xticks(x)
+            ax.set_xticklabels(metrics)
+            ax.set_xlabel('Метрики')
+            ax.set_ylabel('Ошибка')
+            ax.set_title('Метод '+ name)
             plots.append(fig)
-        
         return plots
     
 
@@ -191,7 +183,7 @@ class SimpleApp:
             messagebox.showinfo("Успех", f"График сохранен как {filename}")
 
     
-    def run_methods(self):
+    def run_methods(self, methods):
         if not self.file1_path or not self.file2_path:
             messagebox.showwarning("Предупреждение", "Пожалуйста, выберите оба файла!")
             return
@@ -200,18 +192,11 @@ class SimpleApp:
             "file2": self.file2_path,
         }
 
-        # Логика обработки файлов
-
-        # parser(data['file1'])
-        # parser(data['file2'])
-        # method_1(file1, file2)
-        # method_2(file1, file2)
-        # method_3(file1, file2)
-
+        t_data, r_data = get_error_data(methods,self.file1_path,self.file2_path)
 
         messagebox.showinfo("Информация", "Файлы загружены! Генерация графиков...")
         
-        sample_plots = self.create_sample_plots()
+        sample_plots = self.create_plots(t_data, r_data)
         
         self.display_plots(sample_plots)
         
