@@ -10,8 +10,31 @@ class SimpleApp:
     def __init__(self, root):
         self.root = root
         self.root.title("Precision analysis")
-        root.geometry('500x1000')
+        root.state('zoomed')
+
+        main_frame = tk.Frame(root)
+        main_frame.pack(fill='both', expand=True)
+
+        scrollbar = tk.Scrollbar(main_frame, orient=tk.VERTICAL)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+
+        main_canvas = tk.Canvas(main_frame, yscrollcommand=scrollbar.set)
+        main_canvas.pack(fill=tk.BOTH, expand=True)
         
+        scrollbar.config(command=main_canvas.yview)
+        self.content = tk.Frame(main_canvas)
+        self.content.pack(fill=tk.BOTH, expand=True)
+        self.canvas_window = main_canvas.create_window((0, 0), window=self.content, anchor="nw")
+        
+        def on_content_configure(event):
+            main_canvas.configure(scrollregion=main_canvas.bbox("all"))
+        self.content.bind("<Configure>", on_content_configure)
+
+        def on_canvas_configure(event):
+            main_canvas.itemconfig(self.canvas_window, width=event.width)
+        main_canvas.bind("<Configure>", on_canvas_configure)
+
+
         self.file1_path = None
         self.file2_path = None
         
@@ -20,12 +43,14 @@ class SimpleApp:
         self.daniilidis_var = tk.IntVar()
         self.li_wang_wu_var = tk.IntVar()
         self.shah_var = tk.IntVar()
+
+        self.first_input = True
         
         self.create_widgets()
     
 
     def create_widgets(self):
-        file_frame = ttk.Frame(self.root)
+        file_frame = ttk.Frame(self.content)
         file_frame.pack(pady=10)
         
         self.btn_file1 = ttk.Button(
@@ -42,7 +67,7 @@ class SimpleApp:
         )
         self.btn_file2.pack(side=tk.LEFT, padx=5)
 
-        btn_frame = ttk.Frame(self.root)
+        btn_frame = ttk.Frame(self.content)
         btn_frame.pack(pady=10)
         self.label_file1 = ttk.Label(btn_frame, text="Файл 1 не выбран")
         self.label_file1.pack(side=tk.LEFT, padx=5)
@@ -50,47 +75,49 @@ class SimpleApp:
         self.label_file2 = ttk.Label(btn_frame, text="Файл 2 не выбран")
         self.label_file2.pack(side=tk.RIGHT, padx=5)
 
-        tsai_lenz_check = tk.Checkbutton(self.root, text="tsai-lenz", variable=self.tsai_lenz_var)
+        tsai_lenz_check = tk.Checkbutton(self.content, text="tsai-lenz", variable=self.tsai_lenz_var)
         tsai_lenz_check.pack()
 
-        park_martin_check = tk.Checkbutton(self.root, text="park-martin", variable=self.park_martin_var)
+        park_martin_check = tk.Checkbutton(self.content, text="park-martin", variable=self.park_martin_var)
         park_martin_check.pack()
 
-        daniilidis_check = tk.Checkbutton(self.root, text="daniilidis", variable=self.daniilidis_var)
+        daniilidis_check = tk.Checkbutton(self.content, text="daniilidis", variable=self.daniilidis_var)
         daniilidis_check.pack()
 
-        li_wang_wu_check = tk.Checkbutton(self.root, text="li-wang-wu", variable=self.li_wang_wu_var)
+        li_wang_wu_check = tk.Checkbutton(self.content, text="li-wang-wu", variable=self.li_wang_wu_var)
         li_wang_wu_check.pack()
 
-        shah_check = tk.Checkbutton(self.root, text="shah", variable=self.shah_var)
+        shah_check = tk.Checkbutton(self.content, text="shah", variable=self.shah_var)
         shah_check.pack()
         
         self.submit_btn = ttk.Button(
-            self.root,
+            self.content,
             text="Выполнить",
             command=self.run_methods
         )
         self.submit_btn.pack(pady=10)
-        self.create_plot_areas()
+        
+
     
 
     def create_plot_areas(self):
-        translation_label = ttk.Label(self.root, text="Translation Errors", font=('Arial', 12, 'bold'))
+        translation_label = ttk.Label(self.content, text="Translation Errors", font=('Arial', 12, 'bold'))
         translation_label.pack(pady=(10, 5))
         
         self.create_scrollable_plot_area("translation")
         
-        rotation_label = ttk.Label(self.root, text="Rotation Errors", font=('Arial', 12, 'bold'))
+        rotation_label = ttk.Label(self.content, text="Rotation Errors", font=('Arial', 12, 'bold'))
         rotation_label.pack(pady=(20, 5))
         
         self.create_scrollable_plot_area("rotation")
 
 
+
     def create_scrollable_plot_area(self, area_type):
-        container = ttk.Frame(self.root)
+        container = ttk.Frame(self.content)
         container.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
         
-        canvas = tk.Canvas(container, height=300, bg='white')
+        canvas = tk.Canvas(container, height=300)
         h_scrollbar = ttk.Scrollbar(container, orient=tk.HORIZONTAL, command=canvas.xview)
         canvas.configure(xscrollcommand=h_scrollbar.set)
         
@@ -140,7 +167,6 @@ class SimpleApp:
                 width = 0.35
                 fig, ax = plt.subplots(figsize=(6, 4))
                 ax.bar(x - width/2, translation, width, label='translation')
-                ax.legend(loc='upper right', frameon=False)
                 ax.set_xticks(x)
                 ax.set_xticklabels(metrics)
                 ax.set_xlabel('Метрики')
@@ -155,7 +181,6 @@ class SimpleApp:
                 width = 0.35
                 fig, ax = plt.subplots(figsize=(6, 4))
                 ax.bar(x + width/2, rotation, width, label='rotation') 
-                ax.legend(loc='upper right', frameon=False)
                 ax.set_xticks(x)
                 ax.set_xticklabels(metrics)
                 ax.set_xlabel('Метрики')
@@ -239,7 +264,10 @@ class SimpleApp:
         
         sample_plot_t = self.create_plots(t_data, 't')
         sample_plot_r = self.create_plots(r_data, 'r')
-        
+        if self.first_input:
+            self.create_plot_areas()
+            self.first_input = False
+
         self.display_plots(sample_plot_t, "translation")
         self.display_plots(sample_plot_r, "rotation")
 
