@@ -1,8 +1,6 @@
-import argparse
-import sys
 import numpy as np
 
-from utils import load_poses_csv, df_to_Ts, summarize_errors, print_T
+from utils import load_poses_csv, df_to_Ts, summarize_errors
 from tsai_lenz import tsai_lenz
 from park_martin import park_martin
 from daniilidis import daniilidis
